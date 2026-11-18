@@ -1,0 +1,40 @@
+name: Bypass test (anonlink)
+
+on:
+  workflow_dispatch:
+    inputs:
+      url:
+        description: "Short link to resolve (destination URL only, never downloaded)"
+        required: true
+        default: "https://anonlink.io/qQsoW"
+
+jobs:
+  bypass:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      BYPASS_NO_RELAY: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install Playwright + Chromium
+        run: |
+          pip install playwright
+          python3 -m playwright install chromium --with-deps
+      - name: Run browser bypass
+        continue-on-error: true
+        run: |
+          set +e
+          python3 bypass_browser.py --verbose "${{ inputs.url }}" > bypass-run.log 2>&1
+          code=$?
+          echo "exit=$code" >> bypass-run.log
+          cat bypass-run.log
+          exit $code
+      - name: Upload run log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bypass-run-log
+          path: bypass-run.log
